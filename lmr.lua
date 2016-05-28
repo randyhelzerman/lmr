@@ -1,15 +1,18 @@
 #!/usr/local/bin/luajit
 --#!/usr/local/bin/lua
 
+dbg = require("debugger")
+
 -- load up rocks we use
-local std      =  require "std"
 local inspect  =  require "inspect"
 local lzmq     =  require "lzmq"
+local optparse =  require "optparse"
 
 
 -- set up option handling
 function configure ()
-   local optparser = std.optparse [[
+   local optparser = optparse
+[[
  Version 0.0
  Just starting out.
 
@@ -20,12 +23,12 @@ function configure ()
  Map Reduce
 
  Any program which can be cast in the form:
- cat intput.txt | map | sort | reduce > output.txt
+ ( map | sort | reduce ) < intput.txt  > output.txt
  can be parallelized with map reduce.
 
  Your mileage may vary.
 
- ./lmr.lua -map map.sh -reduce reduce.sh  -hosts "server1, server2, server3" < input.txt > output.txt
+ ./lmr.lua --map map.sh --reduce reduce.sh  --hosts "server1, server2, server3" < input.txt > output.txt
 
  Options:
 
@@ -55,31 +58,36 @@ function configure ()
 end
 
 
+-- first rule of parallel and distributed programming:
+-- get a serial version of the algorithm working first.
+-- you are going to need it anyways to test the results of
+-- your parallel algorihm, and you can work out the dorky
+-- endcases which have nothing to do with parallelization.
 function localExecute()
-   -- dump stdin to the comand
-   local infileName = os:tmpname();
-   ifh = io.open(infileName,"w");
-   while true do
-      line = io.stdin:read()
-      if nil == line then break end
-      ifh:write(line.."\n")
-   end
-   ifh:close();
+   local tmpFileName = os.tmpname();
    
-   -- open up pipe to faked command
-   local cmdName
-      = Config.map .. " < " .. infileName
-      .. " | sort " .. Config.sort_opts .. " | "
-      .. Config.reduce;
-   local cfh = io.popen(cmdName, 'r');
+   local cmd
+      = 'eval \"( '
+      .. Config.map
+      .. ' | sort ' .. Config.sort_opts .. ' | '
+      .. Config.reduce
+      .. ' ) > '
+      .. tmpFileName
+      .. '\"'
    
-   -- file name is very cool here. 
-   while true do
-      line = cfh:read();
-      if nil == line then break end
-      print(line);
+   --print("cmd = [" ..cmd .. "]")
+   
+   local fp = io.popen(cmd, "w");
+   for line in io.lines() do
+      fp:write(line .. "\n")
    end
-   cfh:close()
+   fp:close()
+   
+   for line in io.lines(tmpFileName) do
+      print(line)
+   end
+   
+   os.remove(tmpFileName)
 end
 
 
