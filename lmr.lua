@@ -1,7 +1,7 @@
 #!/usr/local/bin/luajit
 --#!/usr/local/bin/lua
 
-dbg = require("debugger")
+--dbg = require("debugger")
 
 -- load up rocks we use
 local inspect  =  require "inspect"
@@ -23,19 +23,17 @@ function configure ()
  Map Reduce
 
  Any program which can be cast in the form:
- ( map | sort | reduce ) < intput.txt  > output.txt
+ ( map | sort | reduce ) < input.txt  > output.txt
  can be parallelized with map reduce.
-
- Your mileage may vary.
 
  ./lmr.lua --map map.sh --reduce reduce.sh  --hosts "server1, server2, server3" < input.txt > output.txt
 
  Options:
 
-   -h, --hosts=HOSTS        list of hostsnames
-   -m, --map=MAP            the map function
-   -r, --reduce=RED         the reduce function
-   -s, --sort-opts=SO       sort options
+   -h, --hosts=HOSTS        list of hostsnames. Defaults to localhost.
+   -m, --map=MAP            the map function.  Defaults to /bin/cat.
+   -r, --reduce=RED         the reduce function. Defaults to /bin/cat.
+   -s, --sort-opts=SO       sort options.   Defaults to empty string.
    -t, --test               local test mode
        --version            display version information, then exit
        --help               display this help, then exit
@@ -48,11 +46,13 @@ function configure ()
    Config = _G.opts;
    
    -- Just run on local for now.
-   --Config.test=true;
+   Config.test=true;
    
    -- do defaults
    if nil == Config.sort_opts then Config.sort_opts = '' end
    if nil == Config.hosts     then Config.hosts     = 'localhost' end
+   if nil == Config.map       then Config.map       = '/bin/cat'  end
+   if nil == Config.reduce    then Config.reduce    = '/bin/cat'  end
    
    --print(inspect(Config))
 end
@@ -69,13 +69,13 @@ function localExecute()
    local cmd
       = 'eval \"( '
       .. Config.map
-      .. ' | sort ' .. Config.sort_opts .. ' | '
+      .. ' | /usr/bin/sort ' .. Config.sort_opts .. ' | '
       .. Config.reduce
       .. ' ) > '
       .. tmpFileName
       .. '\"'
    
-   --print("cmd = [" ..cmd .. "]")
+   -- print("cmd = [" ..cmd .. "]")
    
    local fp = io.popen(cmd, "w");
    for line in io.lines() do

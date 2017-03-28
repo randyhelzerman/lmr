@@ -1,8 +1,5 @@
 #!/usr/local/bin/luajit
 
---dbg = require("debugger")
---dbg()
-
 currentWord = ""
 currentTotal = 0
 for line in io.lines() do
